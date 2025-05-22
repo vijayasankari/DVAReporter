@@ -91,6 +91,9 @@ def generate_report(payload: ReportRequest):
         "Low": RGBColor(0, 128, 0)
     }
 
+    # List to track temp files to delete
+    temp_files_to_delete = []
+
     logo_path = "uploaded_logos/logo.png"
     if os.path.exists(logo_path):
         para = doc.add_paragraph()
@@ -236,6 +239,13 @@ def generate_report(payload: ReportRequest):
     filename = f"report_{uuid.uuid4().hex}.docx"
     filepath = os.path.join("generated_reports", filename)
     doc.save(filepath)
+
+    # ✅ Cleanup temp files
+    for f in temp_files_to_delete:
+        try:
+            os.remove(f)
+        except Exception as e:
+            print(f"⚠️ Could not delete temp file {f}: {e}")
 
     return FileResponse(
         filepath,
