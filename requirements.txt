@@ -1,0 +1,33 @@
+fastapi==0.115.12
+uvicorn==0.34.2
+pydantic==2.11.4
+pydantic-settings==2.9.1
+sqlalchemy==2.0.40
+python-jose==3.4.0
+python-dotenv==1.1.0
+bcrypt==4.3.0
+passlib==1.7.4
+email_validator==2.2.0
+python-multipart==0.0.20
+
+# PDF and DOCX support
+python-docx==1.1.2
+pdfkit==1.0.0      # Keep only if you're using wkhtmltopdf
+
+# Optional visualization and spreadsheet
+matplotlib==3.10.1
+openpyxl==3.1.5
+pandas==2.2.3
+
+# Web framework utilities
+Jinja2==3.1.6
+Werkzeug==3.1.3
+itsdangerous==2.2.0
+
+# Dependency for TLS
+cryptography==44.0.2
+pyOpenSSL==25.0.0
+
+# Others for FastAPI and HTTP
+requests==2.32.3
+aiofiles==24.1.0
