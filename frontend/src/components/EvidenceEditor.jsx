@@ -29,31 +29,42 @@ const EvidenceEditor = ({
   };
 
   const handleImageChange = async (index, file) => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
+  if (!file) return;
 
-    try {
-      const res = await fetch('http://127.0.0.1:8000/evidences/upload/', {
-        method: 'POST',
-        body: formData,
-      });
+  const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/bmp"];
+  if (!allowedTypes.includes(file.type)) {
+    alert("❌ Unsupported file type. Please upload PNG, JPG, JPEG, GIF, or BMP images only.");
+    return;
+  }
 
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      const updated = [...activeSteps];
+  const formData = new FormData();
+  formData.append('file', file);
 
-      const existing = updated[index].screenshotPath || [];
-      updated[index].screenshotPath = Array.isArray(existing)
-        ? [...existing, data.file_path]
-        : [data.file_path];
+  try {
+    const res = await fetch('http://127.0.0.1:8000/evidences/upload/', {
+      method: 'POST',
+      body: formData,
+    });
 
-      onUpdateEvidence(activeVulnId, updated);
-    } catch (err) {
-      console.error(err);
-      alert('Image upload failed');
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || "Upload failed");
     }
-  };
+
+    const data = await res.json();
+    const updated = [...activeSteps];
+    const existing = updated[index].screenshotPath || [];
+    updated[index].screenshotPath = Array.isArray(existing)
+      ? [...existing, data.file_path]
+      : [data.file_path];
+
+    onUpdateEvidence(activeVulnId, updated);
+  } catch (err) {
+    console.error("Image upload failed:", err);
+    alert(`❌ Image upload failed: ${err.message}`);
+  }
+};
+
 
   const handleAddStep = () => {
     const currentSteps = evidenceMap[activeVulnId] || [];
