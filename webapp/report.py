@@ -9,6 +9,8 @@ from collections import Counter
 import os
 import uuid
 from docx2pdf import convert
+from matplotlib.patches import Patch
+from PIL import Image as PILImage
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
@@ -33,13 +35,45 @@ class ReportRequest(BaseModel):
     evidence_data: dict
 
 def generate_pie_chart(vulns, chart_path):
-    severity_counts = Counter([v.severity for v in vulns])
-    labels = list(severity_counts.keys())
-    sizes = list(severity_counts.values())
-    colors = ['maroon', 'red', 'orange', 'green']
+    print("✅ Using UPDATED pie chart logic")
+
+    severity_order = ["Critical", "High", "Medium", "Low"]
+    color_map = {
+        "Critical": "maroon",
+        "High": "red",
+        "Medium": "orange",
+        "Low": "green"
+    }
+
+    severity_counts = Counter(v.severity for v in vulns)
+    labels = [sev for sev in severity_order if severity_counts[sev] > 0]
+    sizes = [severity_counts[sev] for sev in labels]
+    colors = [color_map[sev] for sev in labels]
+
+    def make_autopct(values):
+        def _autopct(pct):
+            total = sum(values)
+            val = int(round(pct * total / 100.0))
+            return f"{val}" if val > 0 else ""
+        return _autopct
 
     plt.figure(figsize=(4, 4))
-    plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=140)
+    wedges, texts, autotexts = plt.pie(
+        sizes,
+        labels=labels,
+        colors=colors,
+        autopct=make_autopct(sizes),
+        startangle=140
+    )
+
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(10)
+        autotext.set_weight("bold")
+
+    legend_labels = [f"{severity_counts[sev]} {sev}" for sev in labels]
+    patches = [Patch(color=color_map[sev], label=legend_labels[i]) for i, sev in enumerate(labels)]
+    plt.legend(handles=patches, loc="best")
     plt.axis('equal')
     plt.tight_layout()
     plt.savefig(chart_path)
@@ -80,14 +114,12 @@ def build_report_doc(payload: ReportRequest, output_path: str):
 
     doc.add_page_break()
 
-    # Header and Footer
     section = doc.sections[0]
     if os.path.exists(logo_path):
         section.header.paragraphs[0].add_run().add_picture(logo_path, width=Inches(1.0)).paragraph.alignment = 2
     section.footer.paragraphs[0].text = "Confidential - For Internal Use Only"
     section.footer.paragraphs[0].alignment = 1
 
-    # Version Info
     doc.add_heading("Version Information", level=2)
     table = doc.add_table(rows=4, cols=3)
     table.style = 'Table Grid'
@@ -103,7 +135,6 @@ def build_report_doc(payload: ReportRequest, output_path: str):
     table.cell(3, 0).text = today
     table.cell(3, 1).text = "Approved"
 
-    # Pie Chart
     chart_path = output_path.replace(".docx", "_chart.png")
     try:
         generate_pie_chart(payload.vulnerabilities, chart_path)
@@ -114,7 +145,6 @@ def build_report_doc(payload: ReportRequest, output_path: str):
 
     doc.add_page_break()
 
-    # Summary Table
     doc.add_heading("Summary Table", level=2)
     summary_table = doc.add_table(rows=1, cols=4)
     summary_table.style = 'Table Grid'
@@ -143,7 +173,6 @@ def build_report_doc(payload: ReportRequest, output_path: str):
                 page_counter += 1
 
     doc.add_page_break()
-
     doc.add_heading("URLs and Scope", level=2)
     doc.add_paragraph(f"URLs: {payload.urls}")
     doc.add_paragraph(f"Scope: {payload.scope}")
@@ -176,7 +205,12 @@ def build_report_doc(payload: ReportRequest, output_path: str):
                     filename = os.path.basename(img_path)
                     full_path = os.path.join("uploaded_evidence", filename)
                     if os.path.exists(full_path):
-                        doc.add_picture(full_path, width=Inches(4))
+                        try:
+                            with PILImage.open(full_path) as img:
+                                img.verify()
+                            doc.add_picture(full_path, width=Inches(4))
+                        except Exception:
+                            doc.add_paragraph(f"[Invalid or unreadable image: {filename}]")
                     else:
                         doc.add_paragraph(f"[Missing Image: {filename}]")
 
