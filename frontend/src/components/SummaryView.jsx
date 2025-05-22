@@ -28,14 +28,23 @@ const SummaryView = ({ selectedVulnerabilities = [], evidenceData = {} }) => {
                 {evidenceData[vuln.instanceId]?.length > 0 ? (
                   evidenceData[vuln.instanceId].map((step, idx) => (
                     <div key={idx} className="border p-2 mt-2 rounded bg-gray-50">
-                      <strong>Step {idx + 1}</strong>
-                      <p>{step.comment}</p>
+                      <p className="font-semibold">Step {idx + 1}</p>
+                      {step.comment && <p className="mb-2">{step.comment}</p>}
+
                       {step.screenshotPath && (
-                        <img
-                          src={`http://127.0.0.1:8000${step.screenshotPath}`}
-                          alt={`Step ${idx + 1}`}
-                          className="mt-1 max-w-xs border rounded"
-                        />
+                        <div className="flex flex-wrap gap-3">
+                          {(Array.isArray(step.screenshotPath)
+                            ? step.screenshotPath
+                            : [step.screenshotPath]
+                          ).map((path, i) => (
+                            <img
+                              key={i}
+                              src={`http://127.0.0.1:8000${path}`}
+                              alt={`Step ${idx + 1} - Image ${i + 1}`}
+                              className="max-w-xs border rounded"
+                            />
+                          ))}
+                        </div>
                       )}
                     </div>
                   ))

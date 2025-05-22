@@ -7,9 +7,11 @@ from datetime import datetime
 import os
 import uuid
 from collections import Counter
+from PIL import Image as PILImage
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
@@ -34,13 +36,44 @@ class ReportRequest(BaseModel):
     evidence_data: dict
 
 def generate_pie_chart(vulns, chart_path):
-    severity_counts = Counter([v.severity for v in vulns])
-    labels = list(severity_counts.keys())
-    sizes = list(severity_counts.values())
-    colors = ['maroon', 'red', 'orange', 'green']
+    severity_order = ["Critical", "High", "Medium", "Low"]
+    color_map = {
+        "Critical": "maroon",
+        "High": "red",
+        "Medium": "orange",
+        "Low": "green"
+    }
+
+    severity_counts = Counter(v.severity for v in vulns)
+    labels = [sev for sev in severity_order if severity_counts[sev] > 0]
+    sizes = [severity_counts[sev] for sev in labels]
+    colors = [color_map[sev] for sev in labels]
+
+    def make_autopct(values):
+        def _autopct(pct):
+            total = sum(values)
+            val = int(round(pct * total / 100.0))
+            return f"{val}" if val > 0 else ""
+        return _autopct
+
     plt.figure(figsize=(4, 4))
-    plt.pie(sizes, labels=labels, colors=colors[:len(labels)], autopct='%1.1f%%', startangle=140)
+    wedges, texts, autotexts = plt.pie(
+        sizes,
+        labels=labels,
+        colors=colors,
+        autopct=make_autopct(sizes),
+        startangle=140
+    )
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(10)
+        autotext.set_weight("bold")
+
+    legend_labels = [f"{severity_counts[sev]} {sev}" for sev in labels]
+    patches = [Patch(color=color_map[sev], label=legend_labels[i]) for i, sev in enumerate(labels)]
+    plt.legend(handles=patches, loc="best")
     plt.axis('equal')
+    plt.tight_layout()
     plt.savefig(chart_path)
     plt.close()
 
@@ -64,7 +97,6 @@ def generate_report(payload: ReportRequest):
         para.alignment = 1
         para.add_run().add_picture(logo_path, width=Inches(2.5))
 
-    # Title and App
     title = doc.add_paragraph("\n\nDynamic Vulnerability Assessment")
     title.alignment = 1
     run = title.runs[0]
@@ -87,7 +119,6 @@ def generate_report(payload: ReportRequest):
 
     doc.add_page_break()
 
-    # Header Logo
     section = doc.sections[0]
     if os.path.exists(logo_path):
         header = section.header
@@ -99,7 +130,6 @@ def generate_report(payload: ReportRequest):
     footer.text = "Confidential - For Internal Use Only"
     footer.alignment = 1
 
-    # Version Info
     doc.add_heading("Version Information", level=2).runs[0].font.size = Pt(18)
     table = doc.add_table(rows=4, cols=3)
     table.style = 'Table Grid'
@@ -117,7 +147,6 @@ def generate_report(payload: ReportRequest):
 
     doc.add_page_break()
 
-    # Pie Chart
     os.makedirs("generated_reports", exist_ok=True)
     pie_path = os.path.join("generated_reports", f"pie_{uuid.uuid4().hex}.png")
     generate_pie_chart(payload.vulnerabilities, pie_path)
@@ -126,7 +155,6 @@ def generate_report(payload: ReportRequest):
     doc.paragraphs[-1].alignment = 1
     doc.add_page_break()
 
-    # Summary Table
     doc.add_heading("Summary Table", level=2).runs[0].font.size = Pt(18)
     summary_table = doc.add_table(rows=1, cols=4)
     summary_table.style = 'Table Grid'
@@ -144,7 +172,6 @@ def generate_report(payload: ReportRequest):
             heading = row[0].paragraphs[0].add_run(f"{sev} Severity")
             heading.bold = True
             heading.font.color.rgb = severity_colors[sev]
-
             for v in group:
                 row = summary_table.add_row().cells
                 row[0].text = str(count)
@@ -156,14 +183,11 @@ def generate_report(payload: ReportRequest):
                 page_counter += 1
 
     doc.add_page_break()
-
-    # URLs and Scope
     doc.add_heading("URLs and Scope", level=2).runs[0].font.size = Pt(18)
     doc.add_paragraph(f"URLs: {payload.urls}")
     doc.add_paragraph(f"Scope: {payload.scope}")
     doc.add_page_break()
 
-    # Vulnerability Details
     doc.add_heading("Vulnerability Details", level=2).runs[0].font.size = Pt(18)
 
     for idx, vuln in enumerate(payload.vulnerabilities, 1):
@@ -174,7 +198,7 @@ def generate_report(payload: ReportRequest):
         para.add_run("Severity: ").bold = True
         sev_run = para.add_run(vuln.severity)
         sev_run.bold = True
-        sev_run.font.color.rgb = severity_colors[vuln.severity]
+        sev_run.font.color.rgb = severity_colors.get(vuln.severity, RGBColor(0, 0, 0))
 
         doc.add_paragraph(f"CVSS Score: {vuln.cvss_score}")
         doc.add_paragraph(f"CVSS Vector: {vuln.cvss_vector}")
@@ -183,19 +207,29 @@ def generate_report(payload: ReportRequest):
         doc.add_paragraph(vuln.description)
 
         doc.add_heading("Evidence", level=4).runs[0].font.size = Pt(18)
-        evidence_key = str(vuln.instanceId or vuln.id)
-        steps = payload.evidence_data.get(evidence_key, [])
+        steps = payload.evidence_data.get(str(vuln.instanceId or vuln.id), [])
         for step_idx, step in enumerate(steps, 1):
             doc.add_paragraph(f"Step {step_idx}: {step.get('comment', '')}")
-            screenshot_path = step.get("screenshotPath", "").lstrip("/")
-            if screenshot_path and os.path.exists(screenshot_path):
-                doc.add_picture(screenshot_path, width=Inches(4))
-            # else:
-            #     doc.add_paragraph(f"[Image not found: {screenshot_path}]")
+
+            paths = step.get("screenshotPath", [])
+            if isinstance(paths, str):
+                paths = [paths]
+
+            for img_path in paths:
+                clean_path = img_path.lstrip("/")
+                full_path = os.path.join(".", clean_path)
+                if os.path.exists(full_path):
+                    try:
+                        with PILImage.open(full_path) as img:
+                            img.verify()
+                        doc.add_picture(full_path, width=Inches(4))
+                    except Exception as e:
+                        doc.add_paragraph(f"[Invalid image: {clean_path}]")
+                else:
+                    doc.add_paragraph(f"[Image not found: {clean_path}]")
 
         doc.add_heading("Recommendation", level=4).runs[0].font.size = Pt(18)
         doc.add_paragraph(vuln.recommendation)
-
         doc.add_heading("Reference", level=4).runs[0].font.size = Pt(18)
         doc.add_paragraph(vuln.reference)
 

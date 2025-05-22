@@ -6,11 +6,11 @@ from docx.shared import Pt, RGBColor, Inches
 from datetime import datetime
 import matplotlib.pyplot as plt
 from collections import Counter
+from matplotlib.patches import Patch
 import os
 import uuid
-from docx2pdf import convert
-from matplotlib.patches import Patch
 from PIL import Image as PILImage
+from docx2pdf import convert
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
@@ -111,7 +111,6 @@ def build_report_doc(payload: ReportRequest, output_path: str):
     run.font.color.rgb = RGBColor(0, 102, 204)
 
     doc.add_paragraph(f"Requested by: {payload.requester_name}")
-
     doc.add_page_break()
 
     section = doc.sections[0]
@@ -144,7 +143,6 @@ def build_report_doc(payload: ReportRequest, output_path: str):
         doc.add_paragraph(f"[Failed to generate chart: {str(e)}]")
 
     doc.add_page_break()
-
     doc.add_heading("Summary Table", level=2)
     summary_table = doc.add_table(rows=1, cols=4)
     summary_table.style = 'Table Grid'
@@ -196,12 +194,17 @@ def build_report_doc(payload: ReportRequest, output_path: str):
 
         doc.add_heading("Evidence", level=4)
         steps = payload.evidence_data.get(str(vuln.instanceId or vuln.id), {}).get("steps", [])
+        print(f"🔍 Evidence for {vuln.title}: {steps}")
         for step_idx, step in enumerate(steps, 1):
             doc.add_paragraph(f"Step {step_idx}", style="List Number")
             if step["type"] == "text":
                 doc.add_paragraph(step["content"])
             elif step["type"] == "image":
-                for img_path in step["content"]:
+                content = step["content"]
+                print(f"🖼️ Step {step_idx} image content: {content}")
+                if isinstance(content, str):
+                    content = [content]
+                for img_path in content:
                     filename = os.path.basename(img_path)
                     full_path = os.path.join("uploaded_evidence", filename)
                     if os.path.exists(full_path):
@@ -209,10 +212,12 @@ def build_report_doc(payload: ReportRequest, output_path: str):
                             with PILImage.open(full_path) as img:
                                 img.verify()
                             doc.add_picture(full_path, width=Inches(4))
-                        except Exception:
+                        except Exception as e:
                             doc.add_paragraph(f"[Invalid or unreadable image: {filename}]")
+                            print(f"❌ PIL failed to open {filename}: {e}")
                     else:
                         doc.add_paragraph(f"[Missing Image: {filename}]")
+                        print(f"❌ Image not found: {full_path}")
 
         doc.add_heading("Recommendation", level=4)
         doc.add_paragraph(vuln.recommendation)
@@ -223,15 +228,20 @@ def build_report_doc(payload: ReportRequest, output_path: str):
 
 @router.post("/word")
 def generate_word_report(payload: ReportRequest):
-    os.makedirs("generated_reports", exist_ok=True)
-    safe_name = payload.app_title.replace(" ", "_")
-    date_str = datetime.now().strftime("%m%d%y")
-    output_path = os.path.join("generated_reports", f"{safe_name}_ManualReport_{date_str}.docx")
+    try:
+        os.makedirs("generated_reports", exist_ok=True)
+        safe_name = payload.app_title.replace(" ", "_")
+        date_str = datetime.now().strftime("%m%d%y")
+        output_path = os.path.join("generated_reports", f"{safe_name}_ManualReport_{date_str}.docx")
+        print(f"📝 Starting report generation: {output_path}")
+        build_report_doc(payload, output_path)
+        print(f"✅ Report successfully saved to {output_path}")
+        return FileResponse(output_path, filename=os.path.basename(output_path),
+                            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    except Exception as e:
+        print(f"❌ Report generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
 
-    build_report_doc(payload, output_path)
-
-    return FileResponse(output_path, filename=os.path.basename(output_path),
-                        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 @router.post("/pdf")
 def generate_pdf_report(payload: ReportRequest):
@@ -240,9 +250,7 @@ def generate_pdf_report(payload: ReportRequest):
     date_str = datetime.now().strftime("%m%d%y")
     word_path = os.path.join("generated_reports", f"{safe_name}_ManualReport_{date_str}.docx")
     pdf_path = word_path.replace(".docx", ".pdf")
-
     build_report_doc(payload, word_path)
-
     try:
         convert(word_path, pdf_path)
         return FileResponse(pdf_path, filename=os.path.basename(pdf_path), media_type="application/pdf")
