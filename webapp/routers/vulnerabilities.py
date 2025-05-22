@@ -84,22 +84,26 @@ async def upload_vulnerabilities(file: UploadFile = File(...), db: Session = Dep
                 ).first()
 
                 if existing:
-                    skipped += 1
-                    continue
-
-                vuln = models.Vulnerability(
-                    title=title,
-                    severity=severity,
-                    cvss_score="",
-                    cvss_vector="",
-                    description=str(row.get("description", "")).strip(),
-                    evidence="",
-                    recommendation=str(row.get("recommendation", "")).strip(),
-                    reference=str(row.get("reference", "")).strip()
-                )
-
-                db.add(vuln)
-                inserted += 1
+                    # Update the existing entry
+                    existing.severity = severity
+                    existing.description = str(row.get("description", "")).strip()
+                    existing.recommendation = str(row.get("recommendation", "")).strip()
+                    existing.reference = str(row.get("reference", "")).strip()
+                    db.add(existing)
+                else:
+                    # Create new entry
+                    vuln = models.Vulnerability(
+                        title=title,
+                        severity=severity,
+                        cvss_score="",
+                        cvss_vector="",
+                        description=str(row.get("description", "")).strip(),
+                        evidence="",
+                        recommendation=str(row.get("recommendation", "")).strip(),
+                        reference=str(row.get("reference", "")).strip()
+                    )
+                    db.add(vuln)
+                    inserted += 1
 
             except Exception as row_error:
                 print(f"❌ Error processing row {idx}: {row_error}")
@@ -107,7 +111,7 @@ async def upload_vulnerabilities(file: UploadFile = File(...), db: Session = Dep
 
         db.commit()
         return {
-            "message": f"✅ Upload complete. Inserted: {inserted}, Skipped (duplicates or errors): {skipped}"
+            "message": f"✅ Upload complete. Inserted: {inserted}, Updated: {skipped}"
         }
 
     except Exception as e:

@@ -1,17 +1,16 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches
 from datetime import datetime
+import matplotlib.pyplot as plt
+from collections import Counter
+from matplotlib.patches import Patch
 import os
 import uuid
-from collections import Counter
 from PIL import Image as PILImage
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
+from docx2pdf import convert
 
 router = APIRouter(prefix="/report", tags=["Report"])
 
@@ -36,6 +35,8 @@ class ReportRequest(BaseModel):
     evidence_data: dict
 
 def generate_pie_chart(vulns, chart_path):
+    print("✅ Using UPDATED pie chart logic")
+
     severity_order = ["Critical", "High", "Medium", "Low"]
     color_map = {
         "Critical": "maroon",
@@ -64,6 +65,7 @@ def generate_pie_chart(vulns, chart_path):
         autopct=make_autopct(sizes),
         startangle=140
     )
+
     for autotext in autotexts:
         autotext.set_color('white')
         autotext.set_fontsize(10)
@@ -77,8 +79,7 @@ def generate_pie_chart(vulns, chart_path):
     plt.savefig(chart_path)
     plt.close()
 
-@router.post("/", response_class=FileResponse)
-def generate_report(payload: ReportRequest):
+def build_report_doc(payload: ReportRequest, output_path: str):
     doc = Document()
     doc.styles['Normal'].font.name = 'Calibri'
     doc.styles['Normal'].font.size = Pt(11)
@@ -91,14 +92,9 @@ def generate_report(payload: ReportRequest):
         "Low": RGBColor(0, 128, 0)
     }
 
-    # List to track temp files to delete
-    temp_files_to_delete = []
-
     logo_path = "uploaded_logos/logo.png"
     if os.path.exists(logo_path):
-        para = doc.add_paragraph()
-        para.alignment = 1
-        para.add_run().add_picture(logo_path, width=Inches(2.5))
+        doc.add_paragraph().add_run().add_picture(logo_path, width=Inches(2.5)).paragraph.alignment = 1
 
     title = doc.add_paragraph("\n\nDynamic Vulnerability Assessment")
     title.alignment = 1
@@ -114,26 +110,16 @@ def generate_report(payload: ReportRequest):
     run.font.size = Pt(26)
     run.font.color.rgb = RGBColor(0, 102, 204)
 
-    requester = doc.add_paragraph()
-    requester.alignment = 0
-    req_run = requester.add_run("Requested by: ")
-    req_run.bold = True
-    requester.add_run(payload.requester_name)
-
+    doc.add_paragraph(f"Requested by: {payload.requester_name}")
     doc.add_page_break()
 
     section = doc.sections[0]
     if os.path.exists(logo_path):
-        header = section.header
-        header_para = header.paragraphs[0]
-        header_para.alignment = 2
-        header_para.add_run().add_picture(logo_path, width=Inches(1.0))
+        section.header.paragraphs[0].add_run().add_picture(logo_path, width=Inches(1.0)).paragraph.alignment = 2
+    section.footer.paragraphs[0].text = "Confidential - For Internal Use Only"
+    section.footer.paragraphs[0].alignment = 1
 
-    footer = section.footer.paragraphs[0]
-    footer.text = "Confidential - For Internal Use Only"
-    footer.alignment = 1
-
-    doc.add_heading("Version Information", level=2).runs[0].font.size = Pt(18)
+    doc.add_heading("Version Information", level=2)
     table = doc.add_table(rows=4, cols=3)
     table.style = 'Table Grid'
     headers = ["Date", "Application Version", "Reviewer"]
@@ -148,17 +134,16 @@ def generate_report(payload: ReportRequest):
     table.cell(3, 0).text = today
     table.cell(3, 1).text = "Approved"
 
-    doc.add_page_break()
+    chart_path = output_path.replace(".docx", "_chart.png")
+    try:
+        generate_pie_chart(payload.vulnerabilities, chart_path)
+        doc.add_paragraph("\n")
+        doc.add_picture(chart_path, width=Inches(4.5))
+    except Exception as e:
+        doc.add_paragraph(f"[Failed to generate chart: {str(e)}]")
 
-    os.makedirs("generated_reports", exist_ok=True)
-    pie_path = os.path.join("generated_reports", f"pie_{uuid.uuid4().hex}.png")
-    generate_pie_chart(payload.vulnerabilities, pie_path)
-    doc.add_paragraph().add_run("Vulnerability Severity Distribution").bold = True
-    doc.add_picture(pie_path, width=Inches(4.5))
-    doc.paragraphs[-1].alignment = 1
     doc.add_page_break()
-
-    doc.add_heading("Summary Table", level=2).runs[0].font.size = Pt(18)
+    doc.add_heading("Summary Table", level=2)
     summary_table = doc.add_table(rows=1, cols=4)
     summary_table.style = 'Table Grid'
     hdrs = ["Sl. No.", "Security Observation", "Risk Rating", "Page No."]
@@ -186,69 +171,88 @@ def generate_report(payload: ReportRequest):
                 page_counter += 1
 
     doc.add_page_break()
-    doc.add_heading("URLs and Scope", level=2).runs[0].font.size = Pt(18)
+    doc.add_heading("URLs and Scope", level=2)
     doc.add_paragraph(f"URLs: {payload.urls}")
     doc.add_paragraph(f"Scope: {payload.scope}")
     doc.add_page_break()
 
-    doc.add_heading("Vulnerability Details", level=2).runs[0].font.size = Pt(18)
-
+    doc.add_heading("Vulnerability Details", level=2)
     for idx, vuln in enumerate(payload.vulnerabilities, 1):
         doc.add_page_break()
-        doc.add_heading(f"{idx}. {vuln.title}", level=3).runs[0].font.size = Pt(18)
+        doc.add_heading(f"{idx}. {vuln.title}", level=3)
 
-        para = doc.add_paragraph()
-        para.add_run("Severity: ").bold = True
-        sev_run = para.add_run(vuln.severity)
+        p = doc.add_paragraph()
+        p.add_run("Severity: ").bold = True
+        sev_run = p.add_run(vuln.severity)
         sev_run.bold = True
         sev_run.font.color.rgb = severity_colors.get(vuln.severity, RGBColor(0, 0, 0))
 
         doc.add_paragraph(f"CVSS Score: {vuln.cvss_score}")
         doc.add_paragraph(f"CVSS Vector: {vuln.cvss_vector}")
-
-        doc.add_heading("Description", level=4).runs[0].font.size = Pt(18)
+        doc.add_heading("Description", level=4)
         doc.add_paragraph(vuln.description)
 
-        doc.add_heading("Evidence", level=4).runs[0].font.size = Pt(18)
-        steps = payload.evidence_data.get(str(vuln.instanceId or vuln.id), [])
+        doc.add_heading("Evidence", level=4)
+        steps = payload.evidence_data.get(str(vuln.instanceId or vuln.id), {}).get("steps", [])
+        print(f"🔍 Evidence for {vuln.title}: {steps}")
         for step_idx, step in enumerate(steps, 1):
-            doc.add_paragraph(f"Step {step_idx}: {step.get('comment', '')}")
+            doc.add_paragraph(f"Step {step_idx}", style="List Number")
+            if step["type"] == "text":
+                doc.add_paragraph(step["content"])
+            elif step["type"] == "image":
+                content = step["content"]
+                print(f"🖼️ Step {step_idx} image content: {content}")
+                if isinstance(content, str):
+                    content = [content]
+                for img_path in content:
+                    filename = os.path.basename(img_path)
+                    full_path = os.path.join("uploaded_evidence", filename)
+                    if os.path.exists(full_path):
+                        try:
+                            with PILImage.open(full_path) as img:
+                                img.verify()
+                            doc.add_picture(full_path, width=Inches(4))
+                        except Exception as e:
+                            doc.add_paragraph(f"[Invalid or unreadable image: {filename}]")
+                            print(f"❌ PIL failed to open {filename}: {e}")
+                    else:
+                        doc.add_paragraph(f"[Missing Image: {filename}]")
+                        print(f"❌ Image not found: {full_path}")
 
-            paths = step.get("screenshotPath", [])
-            if isinstance(paths, str):
-                paths = [paths]
-
-            for img_path in paths:
-                clean_path = img_path.lstrip("/")
-                full_path = os.path.join(".", clean_path)
-                if os.path.exists(full_path):
-                    try:
-                        with PILImage.open(full_path) as img:
-                            img.verify()
-                        doc.add_picture(full_path, width=Inches(4))
-                    except Exception as e:
-                        doc.add_paragraph(f"[Invalid image: {clean_path}]")
-                else:
-                    doc.add_paragraph(f"[Image not found: {clean_path}]")
-
-        doc.add_heading("Recommendation", level=4).runs[0].font.size = Pt(18)
+        doc.add_heading("Recommendation", level=4)
         doc.add_paragraph(vuln.recommendation)
-        doc.add_heading("Reference", level=4).runs[0].font.size = Pt(18)
+        doc.add_heading("Reference", level=4)
         doc.add_paragraph(vuln.reference)
 
-    filename = f"report_{uuid.uuid4().hex}.docx"
-    filepath = os.path.join("generated_reports", filename)
-    doc.save(filepath)
+    doc.save(output_path)
 
-    # ✅ Cleanup temp files
-    for f in temp_files_to_delete:
-        try:
-            os.remove(f)
-        except Exception as e:
-            print(f"⚠️ Could not delete temp file {f}: {e}")
+@router.post("/word")
+def generate_word_report(payload: ReportRequest):
+    try:
+        os.makedirs("generated_reports", exist_ok=True)
+        safe_name = payload.app_title.replace(" ", "_")
+        date_str = datetime.now().strftime("%m%d%y")
+        output_path = os.path.join("generated_reports", f"{safe_name}_ManualReport_{date_str}.docx")
+        print(f"📝 Starting report generation: {output_path}")
+        build_report_doc(payload, output_path)
+        print(f"✅ Report successfully saved to {output_path}")
+        return FileResponse(output_path, filename=os.path.basename(output_path),
+                            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    except Exception as e:
+        print(f"❌ Report generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Report generation failed: {str(e)}")
 
-    return FileResponse(
-        filepath,
-        filename="DVA_Report.docx",
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
+
+@router.post("/pdf")
+def generate_pdf_report(payload: ReportRequest):
+    os.makedirs("generated_reports", exist_ok=True)
+    safe_name = payload.app_title.replace(" ", "_")
+    date_str = datetime.now().strftime("%m%d%y")
+    word_path = os.path.join("generated_reports", f"{safe_name}_ManualReport_{date_str}.docx")
+    pdf_path = word_path.replace(".docx", ".pdf")
+    build_report_doc(payload, word_path)
+    try:
+        convert(word_path, pdf_path)
+        return FileResponse(pdf_path, filename=os.path.basename(pdf_path), media_type="application/pdf")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")

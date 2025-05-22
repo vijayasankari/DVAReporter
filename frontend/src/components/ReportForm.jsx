@@ -9,7 +9,11 @@ function ReportForm({ selected, evidenceMap, projectInfo }) {
     for (const k in map) {
       clean[k] = map[k].map(s => ({
         comment: s.comment,
-        screenshotPath: s.screenshotPath?.startsWith('/') ? s.screenshotPath : ''
+        screenshotPath: Array.isArray(s.screenshotPath)
+  ? s.screenshotPath.filter(p => typeof p === 'string' && p.startsWith('/'))
+  : (typeof s.screenshotPath === 'string' && s.screenshotPath.startsWith('/')
+      ? [s.screenshotPath]
+      : [])
       }));
     }
     return clean;
@@ -44,8 +48,25 @@ function ReportForm({ selected, evidenceMap, projectInfo }) {
       link.download = `${projectInfo.title || 'DVA'}_ManualReport.docx`;
       link.click();
     } catch (err) {
-      alert("Report generation failed.");
-    } finally {
+  console.error("❌ AXIOS ERROR", err);
+
+  if (err.response && err.response.data) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const result = JSON.parse(reader.result);
+        alert(`❌ ${result.detail || 'Report generation failed.'}`);
+      } catch (e) {
+        alert("❌ Report generation failed (unreadable error)");
+      }
+    };
+    reader.readAsText(err.response.data);
+  } else {
+    alert("❌ Report generation failed (network error)");
+  }
+}
+
+ finally {
       setLoading(false);
     }
   };

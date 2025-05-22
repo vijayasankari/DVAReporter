@@ -19,7 +19,7 @@ const EvidenceEditor = ({
     }
   }, [selectedVulnerabilities]);
 
-  const fileInputRef = useRef(null);
+  const fileInputRefs = useRef({});
   const activeSteps = evidenceMap[activeVulnId] || [];
 
   const handleCommentChange = (index, value) => {
@@ -42,7 +42,12 @@ const EvidenceEditor = ({
       if (!res.ok) throw new Error('Upload failed');
       const data = await res.json();
       const updated = [...activeSteps];
-      updated[index].screenshotPath = data.file_path;
+
+      const existing = updated[index].screenshotPath || [];
+      updated[index].screenshotPath = Array.isArray(existing)
+        ? [...existing, data.file_path]
+        : [data.file_path];
+
       onUpdateEvidence(activeVulnId, updated);
     } catch (err) {
       console.error(err);
@@ -52,13 +57,22 @@ const EvidenceEditor = ({
 
   const handleAddStep = () => {
     const currentSteps = evidenceMap[activeVulnId] || [];
-    const updated = [...currentSteps, { comment: '', screenshotPath: '' }];
+    const updated = [...currentSteps, { comment: '', screenshotPath: [] }];
     onUpdateEvidence(activeVulnId, updated);
   };
 
   const handleRemoveStep = (index) => {
     const updated = [...activeSteps];
     updated.splice(index, 1);
+    onUpdateEvidence(activeVulnId, updated);
+  };
+
+  const handleDeleteImage = (stepIndex, imageIndex) => {
+    const updated = [...activeSteps];
+    const images = updated[stepIndex].screenshotPath || [];
+    updated[stepIndex].screenshotPath = Array.isArray(images)
+      ? images.filter((_, i) => i !== imageIndex)
+      : [];
     onUpdateEvidence(activeVulnId, updated);
   };
 
@@ -100,13 +114,13 @@ const EvidenceEditor = ({
                   <input
                     type="file"
                     hidden
-                    ref={fileInputRef}
+                    ref={(el) => (fileInputRefs.current[idx] = el)}
                     onChange={(e) => handleImageChange(idx, e.target.files[0])}
                     accept="image/*"
                   />
                   <button
                     className="px-2 py-1 border rounded text-xs"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => fileInputRefs.current[idx]?.click()}
                   >
                     Add Image
                   </button>
@@ -123,13 +137,42 @@ const EvidenceEditor = ({
               onChange={(e) => handleCommentChange(idx, e.target.value)}
             />
 
-            {step.screenshotPath && (
-              <img
-                src={`http://127.0.0.1:8000${step.screenshotPath}`}
-                alt={`Step ${idx + 1}`}
-                className="mt-2 max-w-xs border rounded"
-              />
-            )}
+            {/* Render all uploaded images with delete option */}
+            <div className="mt-2 flex flex-wrap gap-3">
+              {Array.isArray(step.screenshotPath)
+                ? step.screenshotPath.map((path, i) => (
+                    <div key={i} className="relative inline-block">
+                      <img
+                        src={`http://127.0.0.1:8000${path}`}
+                        alt={`Step ${idx + 1} - Image ${i + 1}`}
+                        className="max-w-xs border rounded block"
+                      />
+                      <button
+                        onClick={() => handleDeleteImage(idx, i)}
+                        className="absolute top-1 right-1 text-white bg-red-600 rounded-full w-5 h-5 text-xs"
+                        title="Delete image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+                : step.screenshotPath && (
+                    <div className="relative inline-block">
+                      <img
+                        src={`http://127.0.0.1:8000${step.screenshotPath}`}
+                        alt={`Step ${idx + 1}`}
+                        className="max-w-xs border rounded block"
+                      />
+                      <button
+                        onClick={() => handleDeleteImage(idx, 0)}
+                        className="absolute top-1 right-1 text-white bg-red-600 rounded-full w-5 h-5 text-xs"
+                        title="Delete image"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
+            </div>
           </div>
         ))}
 
