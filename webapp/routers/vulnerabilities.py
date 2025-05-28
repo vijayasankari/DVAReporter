@@ -67,40 +67,50 @@ async def upload_vulnerabilities(file: UploadFile = File(...), db: Session = Dep
                 raise HTTPException(status_code=400, detail=f"Missing column: {col}")
 
         inserted = 0
+        updated = 0
         skipped = 0
 
         for idx, row in df.iterrows():
             try:
                 title = str(row["title"]).strip()
                 severity = str(row["severity"]).strip()
+                description = str(row.get("description", "")).strip()
+                recommendation = str(row.get("recommendation", "")).strip()
+                reference = str(row.get("reference", "")).strip()
 
                 if not title or not severity:
                     skipped += 1
                     continue
 
-                # Case-insensitive duplicate check
                 existing = db.query(models.Vulnerability).filter(
                     models.Vulnerability.title.ilike(title)
                 ).first()
 
                 if existing:
-                    # Update the existing entry
-                    existing.severity = severity
-                    existing.description = str(row.get("description", "")).strip()
-                    existing.recommendation = str(row.get("recommendation", "")).strip()
-                    existing.reference = str(row.get("reference", "")).strip()
-                    db.add(existing)
+                    if (
+                        existing.severity != severity or
+                        existing.description != description or
+                        existing.recommendation != recommendation or
+                        existing.reference != reference
+                    ):
+                        existing.severity = severity
+                        existing.description = description
+                        existing.recommendation = recommendation
+                        existing.reference = reference
+                        db.add(existing)
+                        updated += 1
+                    else:
+                        skipped += 1
                 else:
-                    # Create new entry
                     vuln = models.Vulnerability(
                         title=title,
                         severity=severity,
                         cvss_score="",
                         cvss_vector="",
-                        description=str(row.get("description", "")).strip(),
+                        description=description,
                         evidence="",
-                        recommendation=str(row.get("recommendation", "")).strip(),
-                        reference=str(row.get("reference", "")).strip()
+                        recommendation=recommendation,
+                        reference=reference
                     )
                     db.add(vuln)
                     inserted += 1
@@ -111,13 +121,17 @@ async def upload_vulnerabilities(file: UploadFile = File(...), db: Session = Dep
 
         db.commit()
         return {
-            "message": f"✅ Upload complete. Inserted: {inserted}, Updated: {skipped}"
+            "inserted": inserted,
+            "updated": updated,
+            "skipped": skipped,
+            "message": f"✅ Upload complete. Inserted: {inserted}, Updated: {updated}, Skipped: {skipped}"
         }
 
     except Exception as e:
         import traceback
         print("Upload Excel Error:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"❌ Error processing file: {str(e)}")
+
 
 @router.get("/sample_excel/")
 def download_sample_excel():

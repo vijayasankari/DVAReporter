@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 function ManageVulns() {
   const [form, setForm] = useState(initialForm());
@@ -37,46 +38,54 @@ function ManageVulns() {
     try {
       if (editingId) {
         await axios.put(`http://127.0.0.1:8000/vulnerabilities/${editingId}/`, form);
-        alert('Vulnerability updated!');
+        /* alert('Vulnerability updated!'); */
+        toast.success("Vulnerability updated!");
       } else {
         await axios.post('http://127.0.0.1:8000/vulnerabilities/', form);
-        alert('Vulnerability saved!');
+        /* alert('Vulnerability saved!'); */
+        toast.success('Vulnerability saved!');
       }
       setForm(initialForm());
       setEditingId(null);
       fetchVulnerabilities();
     } catch (err) {
-      alert('Error saving!');
+      /* alert('Error saving!'); */
+      toast.error("Error saving!");
     }
   };
 
   const handleDelete = async (id) => {
-  if (!window.confirm("Are you sure you want to delete?")) return;
-
-  try {
-    await axios.delete(`http://127.0.0.1:8000/vulnerabilities/${id}`);
-    setVulns(vulns.filter(v => v.id !== id));
-  } catch (err) {
-    console.error("Failed to delete:", err.response?.data || err.message);
-    alert("Failed to delete vulnerability.");
-  }
-};
-
-
-  const handleUpload = async () => {
-    if (!file) return alert('Select a file first!');
-    const formData = new FormData();
-    formData.append('file', file);
+    if (!window.confirm("Are you sure you want to delete?")) return;
 
     try {
-      await axios.post('http://127.0.0.1:8000/vulnerabilities/upload_excel/', formData);
-      alert('Excel upload successful!');
-      setFile(null);
-      fetchVulnerabilities();
-    } catch {
-      alert('Excel upload failed!');
+      await axios.delete(`http://127.0.0.1:8000/vulnerabilities/${id}`);
+      setVulns(vulns.filter(v => v.id !== id));
+    } catch (err) {
+      console.error("Failed to delete:", err.response?.data || err.message);
+      /* alert("Failed to delete vulnerability."); */
+      toast.error("Failed to delete vulnerability.");
     }
   };
+
+    const [uploadResult, setUploadResult] = useState(null);
+
+  const handleUpload = async () => {
+  if (!file) return toast.warning('📁 Please select an Excel file.');
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await axios.post('http://127.0.0.1:8000/vulnerabilities/upload_excel/', formData);
+    const { inserted, updated, skipped } = response.data;
+    toast.success(`✅ Excel Upload Complete\n• Inserted: ${inserted}\n• Updated: ${updated}\n• Skipped: ${skipped}`);
+    setFile(null);
+    fetchVulnerabilities();
+  } catch (err) {
+    console.error(err);
+    toast.error("❌ Excel upload failed!");
+    setUploadResult(null);
+  }
+};
 
   const handleEdit = (vuln) => {
     setEditingId(vuln.id);
@@ -92,25 +101,11 @@ function ManageVulns() {
     });
   };
 
-const deleteVulnerability = async (id) => {
-  if (!window.confirm("Are you sure you want to delete this vulnerability?")) return;
-
-  try {
-    await axios.delete(`http://127.0.0.1:8000/vulnerabilities/${id}`);
-    fetchVulnerabilities();  // Refresh list
-  } catch (err) {
-    console.error("Delete failed", err);
-    alert("Failed to delete vulnerability");
-  }
-};
-
-
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
       {/* Form Section */}
       <div className="border p-6 rounded shadow">
         <h2 className="text-lg font-bold mb-4">{editingId ? "Edit Vulnerability" : "Add New Vulnerability"}</h2>
-
         <div className="grid grid-cols-2 gap-4">
           {['title', 'cvss_score', 'cvss_vector', 'description', 'evidence', 'recommendation', 'reference'].map((field) => (
             <div key={field} className="col-span-2">
@@ -132,7 +127,6 @@ const deleteVulnerability = async (id) => {
               )}
             </div>
           ))}
-
           <div className="col-span-2">
             <label className="block font-semibold mb-1">Severity</label>
             <select
@@ -148,7 +142,6 @@ const deleteVulnerability = async (id) => {
             </select>
           </div>
         </div>
-
         <button
           onClick={handleSave}
           className="bg-blue-600 text-white px-6 py-2 rounded mt-4"
@@ -157,38 +150,33 @@ const deleteVulnerability = async (id) => {
         </button>
       </div>
 
-      {/* Excel Upload */}
-<div className="border p-6 rounded shadow">
-  <h2 className="text-lg font-bold mb-4">Upload Vulnerabilities via Excel</h2>
+      {/* Excel Upload Section */}
+      <div className="border p-6 rounded shadow">
+        <h2 className="text-lg font-bold mb-4">Upload Vulnerabilities via Excel</h2>
+        <div className="flex flex-wrap items-center gap-4">
+          <input
+            type="file"
+            accept=".xlsx"
+            onChange={(e) => setFile(e.target.files[0])}
+            className="border px-3 py-2 rounded"
+          />
+          <button
+            onClick={handleUpload}
+            className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
+          >
+            Upload
+          </button>
+          <a
+            href="http://127.0.0.1:8000/vulnerabilities/sample_excel/"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
+            download
+          >
+            Download Sample Excel
+          </a>
+        </div>
+      </div>
 
-  <div className="flex flex-wrap items-center gap-4">
-    <label className="block">
-      <input
-        type="file"
-        accept=".xlsx"
-        onChange={(e) => setFile(e.target.files[0])}
-        className="border px-3 py-2 rounded"
-      />
-    </label>
-
-    <button
-      onClick={handleUpload}
-      className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded"
-    >
-      Upload
-    </button>
-
-    <a
-      href="http://127.0.0.1:8000/vulnerabilities/sample_excel/"
-      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded"
-      download
-    >
-      Download Sample Excel
-    </a>
-  </div>
-</div>
-
-      {/* Existing Vulnerabilities */}
+      {/* Vulnerability List */}
       <div className="border p-6 rounded shadow">
         <h2 className="text-lg font-bold mb-4">Saved Vulnerabilities</h2>
         <ul className="space-y-2">
