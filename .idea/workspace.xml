@@ -5,9 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f5d6a495-a2ca-4511-a001-8467be5cf350" name="Changes" comment="Apply .gitignore and clean tracked junk files">
-      <change afterPath="$PROJECT_DIR$/frontend/Dockerfile" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/dva.db" beforeDir="false" afterPath="$PROJECT_DIR$/dva.db" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -118,17 +116,12 @@
     <recent_temporary>
       <list>
         <item itemvalue="Python.main" />
-        <item itemvalue="Python.main" />
-        <item itemvalue="Python.main" />
-        <item itemvalue="Python.main" />
-        <item itemvalue="Python.main" />
       </list>
     </recent_temporary>
   </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-f27c65a3e318-JavaScript-PY-251.23774.444" />
         <option value="bundled-python-sdk-890ed5b35930-d9c5bdb153f4-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-251.23774.444" />
       </set>
     </attachedChunks>
@@ -150,6 +143,7 @@
       <workItem from="1747928586060" duration="150000" />
       <workItem from="1747928746728" duration="1419000" />
       <workItem from="1747930800763" duration="2859000" />
+      <workItem from="1748373881196" duration="22000" />
     </task>
     <task id="LOCAL-00001" summary="Updates">
       <option name="closed" value="true" />
