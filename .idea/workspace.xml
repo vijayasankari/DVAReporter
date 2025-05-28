@@ -4,7 +4,10 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="f5d6a495-a2ca-4511-a001-8467be5cf350" name="Changes" comment="Apply .gitignore and clean tracked junk files" />
+    <list default="true" id="f5d6a495-a2ca-4511-a001-8467be5cf350" name="Changes" comment="Apply .gitignore and clean tracked junk files">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/dva.db" beforeDir="false" afterPath="$PROJECT_DIR$/dva.db" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -44,7 +47,7 @@
   }
 }</component>
   <component name="GithubDefaultAccount">
-    <option name="defaultAccountId" value="d442d49e-03ac-4b9d-a4d8-ed2c9c846b63" />
+    <option name="defaultAccountId" value="fc544fcb-bf8d-4b0e-bd8d-df05a541f7fc" />
   </component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
