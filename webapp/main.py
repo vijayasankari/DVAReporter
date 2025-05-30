@@ -1,24 +1,26 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from webapp.routers import vulnerabilities, report, logo, evidences
 from fastapi.staticfiles import StaticFiles
 
-app = FastAPI()
+from webapp.routers import vulnerabilities, report, logo, evidences, auth
 
-# ✅ CORS must be applied BEFORE including routers
+app = FastAPI()  # ✅ Must be defined BEFORE include_router
+
+# ✅ CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173"],  # frontend dev origin
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Include routers
+# ✅ Include all routers
+app.include_router(auth.router)
 app.include_router(vulnerabilities.router)
 app.include_router(report.router)
 app.include_router(logo.router)
 app.include_router(evidences.router)
 
-# ✅ Static path for uploaded images
+# ✅ Serve static files (e.g., uploaded images)
 app.mount("/uploaded_evidence", StaticFiles(directory="uploaded_evidence"), name="uploaded_evidence")

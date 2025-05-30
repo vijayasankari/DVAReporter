@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { toast } from 'react-toastify';
 
 const EvidenceEditor = ({
   selectedVulnerabilities = [],
@@ -29,42 +30,51 @@ const EvidenceEditor = ({
   };
 
   const handleImageChange = async (index, file) => {
-  if (!file) return;
+    if (!file) return;
 
-  const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/bmp"];
-  if (!allowedTypes.includes(file.type)) {
-    alert("❌ Unsupported file type. Please upload PNG, JPG, JPEG, GIF, or BMP images only.");
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  try {
-    const res = await fetch('http://127.0.0.1:8000/evidences/upload/', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || "Upload failed");
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/bmp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("❌ Unsupported file type. Upload PNG, JPG, JPEG, GIF, or BMP.");
+      return;
     }
 
-    const data = await res.json();
-    const updated = [...activeSteps];
-    const existing = updated[index].screenshotPath || [];
-    updated[index].screenshotPath = Array.isArray(existing)
-      ? [...existing, data.file_path]
-      : [data.file_path];
+    const formData = new FormData();
+    formData.append('file', file);
 
-    onUpdateEvidence(activeVulnId, updated);
-  } catch (err) {
-    console.error("Image upload failed:", err);
-    alert(`❌ Image upload failed: ${err.message}`);
-  }
-};
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch('http://127.0.0.1:8000/evidences/upload/', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
 
+      if (res.status === 401) {
+        toast.error("Session expired. Please login again.");
+        localStorage.removeItem("token");
+        window.location.reload();
+        return;
+      }
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.detail || "Upload failed");
+      }
+
+      const data = await res.json();
+      const updated = [...activeSteps];
+      const existing = updated[index].screenshotPath || [];
+      updated[index].screenshotPath = Array.isArray(existing)
+        ? [...existing, data.file_path]
+        : [data.file_path];
+
+      onUpdateEvidence(activeVulnId, updated);
+      toast.success("✅ Image uploaded");
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error(`❌ Upload failed: ${err.message}`);
+    }
+  };
 
   const handleAddStep = () => {
     const currentSteps = evidenceMap[activeVulnId] || [];
@@ -148,7 +158,6 @@ const EvidenceEditor = ({
               onChange={(e) => handleCommentChange(idx, e.target.value)}
             />
 
-            {/* Render all uploaded images with delete option */}
             <div className="mt-2 flex flex-wrap gap-3">
               {Array.isArray(step.screenshotPath)
                 ? step.screenshotPath.map((path, i) => (
@@ -167,22 +176,7 @@ const EvidenceEditor = ({
                       </button>
                     </div>
                   ))
-                : step.screenshotPath && (
-                    <div className="relative inline-block">
-                      <img
-                        src={`http://127.0.0.1:8000${step.screenshotPath}`}
-                        alt={`Step ${idx + 1}`}
-                        className="max-w-xs border rounded block"
-                      />
-                      <button
-                        onClick={() => handleDeleteImage(idx, 0)}
-                        className="absolute top-1 right-1 text-white bg-red-600 rounded-full w-5 h-5 text-xs"
-                        title="Delete image"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
+                : null}
             </div>
           </div>
         ))}

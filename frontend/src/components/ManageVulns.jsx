@@ -1,3 +1,4 @@
+// src/components/ManageVulns.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -7,6 +8,7 @@ function ManageVulns() {
   const [vulns, setVulns] = useState([]);
   const [file, setFile] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const token = localStorage.getItem("token");
 
   function initialForm() {
     return {
@@ -21,9 +23,27 @@ function ManageVulns() {
     };
   }
 
+  const axiosAuth = axios.create({
+    baseURL: 'http://127.0.0.1:8000',
+    headers: { Authorization: `Bearer ${token}` }
+  });
+
+  const handleAuthError = (err) => {
+    if (err.response?.status === 401) {
+      toast.error("🔒 Session expired. Logging out...");
+      localStorage.removeItem("token");
+      window.location.reload();
+    }
+  };
+
   const fetchVulnerabilities = async () => {
-    const res = await axios.get('http://127.0.0.1:8000/vulnerabilities/');
-    setVulns(res.data);
+    try {
+      const res = await axiosAuth.get('/vulnerabilities/');
+      setVulns(res.data);
+    } catch (err) {
+      handleAuthError(err);
+      toast.error("❌ Failed to fetch vulnerabilities");
+    }
   };
 
   useEffect(() => {
@@ -37,55 +57,51 @@ function ManageVulns() {
   const handleSave = async () => {
     try {
       if (editingId) {
-        await axios.put(`http://127.0.0.1:8000/vulnerabilities/${editingId}/`, form);
-        /* alert('Vulnerability updated!'); */
-        toast.success("Vulnerability updated!");
+        await axiosAuth.put(`/vulnerabilities/${editingId}/`, form);
+        toast.success("✅ Vulnerability updated!");
       } else {
-        await axios.post('http://127.0.0.1:8000/vulnerabilities/', form);
-        /* alert('Vulnerability saved!'); */
-        toast.success('Vulnerability saved!');
+        await axiosAuth.post('/vulnerabilities/', form);
+        toast.success("✅ Vulnerability saved!");
       }
       setForm(initialForm());
       setEditingId(null);
       fetchVulnerabilities();
     } catch (err) {
-      /* alert('Error saving!'); */
-      toast.error("Error saving!");
+      handleAuthError(err);
+      toast.error("❌ Error saving vulnerability");
     }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete?")) return;
-
     try {
-      await axios.delete(`http://127.0.0.1:8000/vulnerabilities/${id}`);
-      setVulns(vulns.filter(v => v.id !== id));
+      await axiosAuth.delete(`/vulnerabilities/${id}`);
+      toast.success("🗑️ Deleted successfully");
+      fetchVulnerabilities();
     } catch (err) {
-      console.error("Failed to delete:", err.response?.data || err.message);
-      /* alert("Failed to delete vulnerability."); */
-      toast.error("Failed to delete vulnerability.");
+      handleAuthError(err);
+      toast.error("❌ Failed to delete");
     }
   };
 
-    const [uploadResult, setUploadResult] = useState(null);
-
   const handleUpload = async () => {
-  if (!file) return toast.warning('📁 Please select an Excel file.');
-  const formData = new FormData();
-  formData.append('file', file);
+    if (!file) return toast.warning('📁 Please select an Excel file.');
+    const formData = new FormData();
+    formData.append('file', file);
 
-  try {
-    const response = await axios.post('http://127.0.0.1:8000/vulnerabilities/upload_excel/', formData);
-    const { inserted, updated, skipped } = response.data;
-    toast.success(`✅ Excel Upload Complete\n• Inserted: ${inserted}\n• Updated: ${updated}\n• Skipped: ${skipped}`);
-    setFile(null);
-    fetchVulnerabilities();
-  } catch (err) {
-    console.error(err);
-    toast.error("❌ Excel upload failed!");
-    setUploadResult(null);
-  }
-};
+    try {
+      const res = await axiosAuth.post('/vulnerabilities/upload_excel/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const { inserted, updated, skipped } = res.data;
+      toast.success(`✅ Excel Upload\n• Inserted: ${inserted} | Updated: ${updated} | Skipped: ${skipped}`);
+      setFile(null);
+      fetchVulnerabilities();
+    } catch (err) {
+      handleAuthError(err);
+      toast.error("❌ Excel upload failed");
+    }
+  };
 
   const handleEdit = (vuln) => {
     setEditingId(vuln.id);
