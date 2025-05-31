@@ -1,25 +1,41 @@
-import os
+# webapp/database.py
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from urllib.parse import quote_plus
-from contextlib import contextmanager
+from sqlalchemy.orm import sessionmaker, declarative_base
+import os
+import json
 
-user = os.getenv("DB_USERNAME", "sa")
-password = quote_plus(os.getenv("DB_PASSWORD", "SA4sql2019!"))
-server = os.getenv("DB_SERVER", "10.164.135.240")
-database = os.getenv("DB_NAME", "DVAReporter")
+CONFIG_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../config/db_config.json"))
 
-SQLALCHEMY_DATABASE_URL = (
-    f"mssql+pyodbc://{user}:{password}@{server}:1433/{database}"
-    "?driver=ODBC+Driver+17+for+SQL+Server&Encrypt=no&TrustServerCertificate=yes"
-)
+def load_db_config():
+    if not os.path.exists(CONFIG_PATH):
+        return None
+    with open(CONFIG_PATH, 'r') as f:
+        return json.load(f)
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+cfg = load_db_config()
+if not cfg:
+    raise Exception("❌ DB config not found. Please configure it via Admin Settings.")
+
+db_type = cfg.get("db_type")
+user = cfg.get("user")
+password = cfg.get("password")
+host = cfg.get("host")
+port = cfg.get("port")
+db_name = cfg.get("db_name")
+
+if db_type == "sqlserver":
+    SQLALCHEMY_DATABASE_URL = f"mssql+pyodbc://{user}:{password}@{host}:{port}/{db_name}?driver=ODBC+Driver+17+for+SQL+Server"
+elif db_type == "mysql":
+    SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{password}@{host}:{port}/{db_name}"
+elif db_type == "sqlite":
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///./{db_name}.db"
+else:
+    raise Exception("❌ Unsupported DB type")
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
-# Dependency
 def get_db():
     db = SessionLocal()
     try:

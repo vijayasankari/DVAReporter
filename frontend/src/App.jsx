@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useState } from 'react';
 import ProjectInfo from './components/ProjectInfo';
 import VulnerabilityPicker from './components/VulnerabilityPicker';
@@ -5,12 +6,14 @@ import ManageVulns from './components/ManageVulns';
 import EvidenceEditor from './components/EvidenceEditor';
 import SummaryView from './components/SummaryView';
 import ReportForm from './components/ReportForm';
+import LoginPage from './components/LoginPage';
+import OktaLogin from './components/OktaLogin';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import LoginPage from "./components/LoginPage";
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem("token"));
+  const [useOkta, setUseOkta] = useState(false);
   const [tab, setTab] = useState('project');
   const [projectInfo, setProjectInfo] = useState({
     title: '',
@@ -27,28 +30,45 @@ function App() {
     setToken(jwt);
   };
 
-    const handleLogout = () => {
-        localStorage.removeItem("token");
-        setToken(null);
-        setTab('project');
-        setProjectInfo({
-          title: '',
-          scope: '',
-          urls: '',
-          analyst: '',
-          requester: ''
-        });
-        setSelectedVulns([]);
-        setEvidenceMap({});
-      };
+  const handleLogout = () => {
+    localStorage.clear();
+    setToken(null);
+    setTab('project');
+    setProjectInfo({
+      title: '',
+      scope: '',
+      urls: '',
+      analyst: '',
+      requester: ''
+    });
+    setSelectedVulns([]);
+    setEvidenceMap({});
+  };
 
   if (!token) {
-    return <LoginPage onLogin={handleLogin} />;
+    return (
+      <>
+        {useOkta ? (
+          <OktaLogin onLogin={handleLogin} />
+        ) : (
+          <LoginPage onLogin={handleLogin} />
+        )}
+        <div className="text-center mt-4">
+          <button
+            onClick={() => setUseOkta(!useOkta)}
+            className="text-blue-600 underline text-sm"
+          >
+            {useOkta ? "Use Local Login" : "Use Okta Login"}
+          </button>
+        </div>
+        <ToastContainer position="top-center" autoClose={3000} />
+      </>
+    );
   }
 
   const tabs = [
     { id: 'project', label: 'Project Info' },
-    { id: 'Vulnerabilities', label: 'Vulnerability Picker' },
+    { id: 'vulnerabilities', label: 'Vulnerability Picker' },
     { id: 'manage', label: 'Manage Vulnerabilities' },
     { id: 'evidence', label: 'Evidences' },
     { id: 'summary', label: 'Summary' },
@@ -68,13 +88,13 @@ function App() {
       </div>
 
       <div className="flex justify-center gap-2 mb-6">
-        {['project', 'vulnerabilities', 'manage', 'evidence', 'summary', 'generate'].map(id => (
+        {tabs.map(({ id, label }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
             className={`px-4 py-2 rounded ${tab === id ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
           >
-            {id[0].toUpperCase() + id.slice(1)}
+            {label}
           </button>
         ))}
       </div>
@@ -103,6 +123,7 @@ function App() {
           <ReportForm selected={selectedVulns} evidenceMap={evidenceMap} projectInfo={projectInfo} />
         )}
       </div>
+
       <ToastContainer position="top-center" autoClose={3000} />
     </div>
   );

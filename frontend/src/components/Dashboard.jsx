@@ -1,5 +1,4 @@
-// src/components/Dashboard.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ProjectInfo from "./ProjectInfo";
 import VulnerabilityPicker from "./VulnerabilityPicker";
 import ManageVulns from "./ManageVulns";
@@ -9,7 +8,41 @@ import ReportForm from "./ReportForm";
 import Settings from "./Settings";
 import { ToastContainer } from "react-toastify";
 import { useNavigate } from "react-router-dom";
+import jwt_decode from "jwt-decode";
 import "react-toastify/dist/ReactToastify.css";
+
+const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
+
+const ProfileModal = ({ onClose, onOpenSettings }) => {
+  const username = localStorage.getItem("username") || "Unknown";
+  const role = localStorage.getItem("role") || "User";
+  const oktaGroup = localStorage.getItem("okta_group") || null;
+
+  return (
+    <div className="fixed top-16 right-4 bg-white border rounded shadow p-4 z-50 w-64">
+      <h3 className="text-lg font-semibold mb-2">User Profile</h3>
+      <p><strong>Username:</strong> {username}</p>
+      <p><strong>Role:</strong> {role}</p>
+      {oktaGroup && <p><strong>Okta Group:</strong> {oktaGroup}</p>}
+      <div className="mt-4 flex justify-between">
+        {role === "Admin" && (
+          <button
+            onClick={onOpenSettings}
+            className="bg-blue-600 text-white text-sm px-3 py-1 rounded"
+          >
+            Settings
+          </button>
+        )}
+        <button
+          onClick={onClose}
+          className="text-sm px-3 py-1 border rounded hover:bg-gray-100"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
 
 function Dashboard({ token }) {
   const [tab, setTab] = useState("project");
@@ -23,6 +56,7 @@ function Dashboard({ token }) {
   const [selectedVulns, setSelectedVulns] = useState([]);
   const [evidenceMap, setEvidenceMap] = useState({});
   const [showSettings, setShowSettings] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const navigate = useNavigate();
 
   const role = localStorage.getItem("role") || "User";
@@ -42,25 +76,84 @@ function Dashboard({ token }) {
     navigate("/");
   };
 
+  // Session timeout logic
+  useEffect(() => {
+    let inactivityTimer;
+    const resetInactivityTimer = () => {
+      clearTimeout(inactivityTimer);
+      inactivityTimer = setTimeout(() => {
+        alert("You have been logged out due to inactivity.");
+        handleLogout();
+      }, INACTIVITY_LIMIT);
+    };
+
+    window.addEventListener("mousemove", resetInactivityTimer);
+    window.addEventListener("keydown", resetInactivityTimer);
+    window.addEventListener("scroll", resetInactivityTimer);
+    resetInactivityTimer();
+
+    return () => {
+      clearTimeout(inactivityTimer);
+      window.removeEventListener("mousemove", resetInactivityTimer);
+      window.removeEventListener("keydown", resetInactivityTimer);
+      window.removeEventListener("scroll", resetInactivityTimer);
+    };
+  }, []);
+
+  // Token expiration logic
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      try {
+        const decoded = jwt_decode(token);
+        const now = Date.now() / 1000;
+        if (decoded.exp && decoded.exp < now) {
+          alert("Session expired. Please log in again.");
+          handleLogout();
+        }
+      } catch (e) {
+        console.warn("Invalid token");
+        handleLogout();
+      }
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-white p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-blue-700">DVAReporter</h1>
-        <div className="flex gap-3 items-center">
-          <span className="text-gray-600">Welcome, {username} ({role})</span>
-          <button
-            className="text-sm px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-            onClick={() => setShowSettings(true)}
-          >
-            ⚙️ Settings
-          </button>
-          <button
-            className="text-sm px-3 py-1 rounded bg-red-600 text-white"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
-        </div>
+        <div className="relative flex gap-3 items-center">
+  <button
+    className="text-sm px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+    onClick={() => {
+      setShowProfile(prev => !prev);
+      console.log("Profile toggled");
+    }}
+  >
+    👤 Profile
+  </button>
+
+  <button
+    className="text-sm px-3 py-1 rounded bg-red-600 text-white"
+    onClick={handleLogout}
+  >
+    Logout
+  </button>
+console.log("Dashboard loaded");
+console.log("Username:", username);
+console.log("Role:", role);
+console.log("Rendering showProfile:", showProfile);
+  {showProfile && (
+    <ProfileModal
+      onClose={() => setShowProfile(false)}
+      onOpenSettings={() => {
+        setShowProfile(false);
+        setShowSettings(true);
+      }}
+    />
+  )}
+</div>
+
       </div>
 
       {showSettings ? (

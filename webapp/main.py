@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-
 from webapp.routers import vulnerabilities, report, logo, evidences, auth
+from webapp.routers import admin
 
 app = FastAPI()  # ✅ Must be defined BEFORE include_router
 
@@ -21,6 +21,7 @@ app.include_router(vulnerabilities.router)
 app.include_router(report.router)
 app.include_router(logo.router)
 app.include_router(evidences.router)
+app.include_router(admin.router)
 
 # ✅ Serve static files (e.g., uploaded images)
 app.mount("/uploaded_evidence", StaticFiles(directory="uploaded_evidence"), name="uploaded_evidence")

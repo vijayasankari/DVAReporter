@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel
 from webapp.database import get_db
 from webapp import models
+from webapp.auth_utils import auto_register_okta_user
+from webapp.schemas import TokenRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -50,3 +52,23 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
     access_token = create_access_token(data={"sub": user.username, "role": user.role})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/token")
+def login(request: TokenRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter_by(username=request.username).first()
+
+    # If not found, try Okta-based auto registration
+    if not user:
+        # You can fetch group from an external header or SSO data
+        group = request.okta_group if hasattr(request, 'okta_group') else "DefaultGroup"
+        user = auto_register_okta_user(request.username, group, db)
+
+    if not user:
+        raise HTTPException(status_code=403, detail="Invalid credentials or group not mapped")
+
+    if not user.is_okta:
+        if not verify_password(request.password, user.hashed_password):
+            raise HTTPException(status_code=401, detail="Incorrect password")
+
+    token = create_token(user.username, user.role)
+    return {"access_token": token, "token_type": "bearer", "role": user.role, "username": user.username}

@@ -1,0 +1,8 @@
+{
+  "db_type": "sqlserver",
+  "host": "10.164.135.240",
+  "port": 1433,
+  "db_name": "DVAReporter",
+  "user": "SA",
+  "password": "SA4sql2019!"
+}
