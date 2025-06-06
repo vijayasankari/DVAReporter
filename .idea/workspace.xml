@@ -5,39 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="f5d6a495-a2ca-4511-a001-8467be5cf350" name="Changes" comment="Merge branch 'dev'&#10;&#10;# Conflicts:&#10;#&#9;.idea/workspace.xml&#10;#&#9;dva.db&#10;#&#9;frontend/src/components/EvidenceEditor.jsx&#10;#&#9;webapp/routers/__pycache__/vulnerabilities.cpython-311.pyc">
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/OktaLogin.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/webapp/auth_utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/webapp/config.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/webapp/utils/db_config_handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/79e804d4e6d54c9fb8dd566e1206e36e.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/cli-32.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/cli-64.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/cli-arm64.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/cli.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/gui-32.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/gui-64.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/gui-arm64.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/gui.exe" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/pie_8fce8a05a91f40e0b1dd36e6bc9f4f9c.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/python" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/python3" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/python3.11" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/report_ca1f6201d06244a3b21ab04344c71052.docx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25,_10_15 AM_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_5_22_25__10_15AM__Changes_.xml" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/components/Dashboard.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/Dashboard.jsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/components/LoginPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/LoginPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/Settings.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/Settings.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/node_modules/.package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/node_modules/.package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/webapp/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/webapp/database.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/webapp/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/webapp/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/webapp/routers/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/webapp/routers/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/webapp/routers/auth.py" beforeDir="false" afterPath="$PROJECT_DIR$/webapp/routers/auth.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/webapp/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/webapp/schemas.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

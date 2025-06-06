@@ -60,7 +60,6 @@ function Dashboard({ token }) {
   const navigate = useNavigate();
 
   const role = localStorage.getItem("role") || "User";
-  const username = localStorage.getItem("username") || "Unknown";
 
   const tabs = [
     { id: "project", label: "Project Info" },
@@ -76,7 +75,6 @@ function Dashboard({ token }) {
     navigate("/");
   };
 
-  // Session timeout logic
   useEffect(() => {
     let inactivityTimer;
     const resetInactivityTimer = () => {
@@ -100,7 +98,6 @@ function Dashboard({ token }) {
     };
   }, []);
 
-  // Token expiration logic
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
@@ -123,38 +120,30 @@ function Dashboard({ token }) {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-blue-700">DVAReporter</h1>
         <div className="relative flex gap-3 items-center">
-  <button
-    className="text-sm px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
-    onClick={() => {
-      setShowProfile(prev => !prev);
-      console.log("Profile toggled");
-    }}
-  >
-    👤 Profile
-  </button>
-
-  <button
-    className="text-sm px-3 py-1 rounded bg-red-600 text-white"
-    onClick={handleLogout}
-  >
-    Logout
-  </button>
-console.log("Dashboard loaded");
-console.log("Username:", username);
-console.log("Role:", role);
-console.log("Rendering showProfile:", showProfile);
-  {showProfile && (
-    <ProfileModal
-      onClose={() => setShowProfile(false)}
-      onOpenSettings={() => {
-        setShowProfile(false);
-        setShowSettings(true);
-      }}
-    />
-  )}
-</div>
-
+          <button
+            className="text-sm px-3 py-1 rounded bg-gray-200 hover:bg-gray-300"
+            onClick={() => setShowProfile((prev) => !prev)}
+          >
+            👤 Profile
+          </button>
+          <button
+            className="text-sm px-3 py-1 rounded bg-red-600 text-white"
+            onClick={handleLogout}
+          >
+            Logout
+          </button>
+        </div>
       </div>
+
+      {showProfile && (
+        <ProfileModal
+          onClose={() => setShowProfile(false)}
+          onOpenSettings={() => {
+            setShowProfile(false);
+            setShowSettings(true);
+          }}
+        />
+      )}
 
       {showSettings ? (
         role === "Admin" ? (

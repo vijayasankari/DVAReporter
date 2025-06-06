@@ -1,6 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
-import { jwtDecode } from "jwt-decode"; // ⬅️ Fix: use named export
+import { jwtDecode } from "jwt-decode"; // Correct named export
 
 function LoginPage({ onLogin }) {
   const [username, setUsername] = useState("");
@@ -18,16 +18,13 @@ function LoginPage({ onLogin }) {
       });
 
       const token = response.data.access_token;
-      localStorage.setItem("token", token);
+      const decoded = jwtDecode(token); // ⬅️ decode first
 
-      try {
-        const decoded = jwtDecode(token); // ⬅️ Fix usage here
-        if (decoded.sub) localStorage.setItem("username", decoded.sub);
-        if (decoded.role) localStorage.setItem("role", decoded.role);
-        if (decoded.okta_group) localStorage.setItem("okta_group", decoded.okta_group);
-      } catch (decodeErr) {
-        console.error("Token decoding failed:", decodeErr);
-      }
+      // Save to localStorage
+      localStorage.setItem("token", token);
+      if (decoded.sub) localStorage.setItem("username", decoded.sub);
+      if (decoded.role) localStorage.setItem("role", decoded.role);
+      if (decoded.okta_group) localStorage.setItem("okta_group", decoded.okta_group);
 
       onLogin(token);
     } catch (err) {
